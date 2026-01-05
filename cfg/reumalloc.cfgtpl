@@ -1,0 +1,17 @@
+#define TOP_OF_RAM      $D000
+#define START_OF_CODE   $0810
+#define START_OF_BSS    $C800
+
+MEMORY {                
+    LOADADDR:       start = $07ff,              size = $0002, fill = yes, fillval = $00;  
+    STARTUP:        start = $0801,              size = $000f, fill = yes, fillval = $00;
+    MAIN:           start = START_OF_CODE,      size = START_OF_BSS - START_OF_CODE;        
+    BSS:            start = START_OF_BSS,       size = TOP_OF_RAM - START_OF_BSS;
+}
+
+SEGMENTS {                    
+    LOADADDR:       load = LOADADDR,        type = ro;
+    STARTUP:        load = STARTUP,         type = ro;
+    MAIN:           load = MAIN,            type = ro;     
+    BSS:            load = BSS,             type = bss;
+}
