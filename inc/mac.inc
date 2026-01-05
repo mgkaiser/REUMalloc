@@ -129,8 +129,8 @@ SID_REG_ENV3             = SID1_BASE + $1c
 
 ; Constants for REU registers (https://codebase64.net/doku.php?id=base:reu_registers)
 REU_BASE            = $DF00
-REU_CMD             = REU_BASE + $00
-REU_STATUS          = REU_BASE + $01
+REU_STATUS          = REU_BASE + $00
+REU_CMD             = REU_BASE + $01    ; $80 - Start REU command, $01 - REU -> CPU, $00 CPU -> REU
 REU_NEAR_ADDR_LO    = REU_BASE + $02
 REU_NEAR_ADDR_HI    = REU_BASE + $03
 REU_FAR_ADDR_LO     = REU_BASE + $04
@@ -138,7 +138,8 @@ REU_FAR_ADDR_MED    = REU_BASE + $05
 REU_FAR_ADDR_HI     = REU_BASE + $06
 REU_BLOCK_LEN_LO    = REU_BASE + $07
 REU_BLOCK_LEN_HI    = REU_BASE + $08
-REU_INTERRUPT_MASK  = REU_BASE + $09
+REU_INTERRUPT_MASK  = REU_BASE + $09    ; $80 - Enable interrupts, $40 - End of Block interrupt, $20 - Interrupt on Verify Error
+REU_ADDR_CTRL       = REU_BASE + $0A    ; $80 - Don't increment near addr, $40 - Don't increment far addr
 
 ; REU Command Codes
 REU_CMD_COPY_NEAR_TO_FAR = $80
@@ -197,6 +198,33 @@ VIC_COL_LIGHT_GREEN = $0d
 VIC_COL_LIGHT_BLUE  = $0e
 VIC_COL_LIGHT_GRAY  = $0f
 
+DEBUG_REG = $d7ff
+
+.macro breakpoint
+    pha
+    lda #$00
+    sta DEBUG_REG
+:   lda DEBUG_REG
+    beq :-  
+    pla
+.endmacro
+
+.macro mov_abs_16 dest, src
+    lda src
+    sta dest
+    lda src + 1
+    sta dest + 1
+.endmacro
+
+.macro mov_abs_24 dest, src
+    lda src
+    sta dest
+    lda src + 1
+    sta dest + 1
+    lda src + 2
+    sta dest + 2
+.endmacro
+    
 .macro sta_imm_16 value, addr
     lda #<value
     sta addr
@@ -212,5 +240,17 @@ VIC_COL_LIGHT_GRAY  = $0f
 .macro ldxy_imm_16 value
     ldx #<value
     ldy #>value
+.endmacro
+
+.macro beql label
+    bne :+
+    jmp label
+:
+.endmacro
+
+.macro bccl label
+    bcs :+
+    jmp label
+:
 .endmacro
 

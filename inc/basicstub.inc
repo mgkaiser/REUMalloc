@@ -19,7 +19,11 @@ startup:
 
     ; Page out BASIC ROM for C64    
     lda #$36
-    sta $01     
+    sta $01   
+
+    ; Indicate that we are already running.  DEBUG_REG is $FF when running and $00 when stopped.
+    lda #$FF
+    sta DEBUG_REG  
                 
     ; Call main procedure
     jsr main

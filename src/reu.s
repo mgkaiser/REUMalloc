@@ -13,8 +13,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .segment "BSS"
 
-; Additional data definitions
-DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables that DO require initialization
@@ -28,26 +26,22 @@ DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
 
 ; Copy data from CPU memory to REU memory
 ; usage:
-;   R0 = source address in CPU memory (16-bit)
-;   R1:R2L = destination address in REU memory (24-bit)
-;   R3 = length in bytes (16-bit)
+;   R0      = source address in CPU memory (16-bit)
+;   R1:R2L  = destination address in REU memory (24-bit)
+;   R3      = length in bytes (16-bit)
 ;   jsr reu_copy_from_cpu_to_reu
 ; Result:
 ;   Data copied from CPU memory to REU memory
 ; Destroyed:
 ;   R0, R1, R2L, R3, A, X, Y
 .proc reu_copy_from_cpu_to_reu : near
-
-    ; Leave interrupts enabled during REU operation
-    lda #$80
-    sta REU_INTERRUPT_MASK
-
+    
     ; Address in REU memory
     lda R1
     sta REU_FAR_ADDR_LO
     lda R1 + 1
     sta REU_FAR_ADDR_MED
-    lda R2L
+    lda R1 + 2              ; R2L
     sta REU_FAR_ADDR_HI
 
     ; Address in CPU memory
@@ -63,7 +57,7 @@ DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
     sta REU_BLOCK_LEN_HI
 
     ; Start the transfer: command $80 = CPU to REU
-    lda #$80
+    lda #%10010000
     sta REU_CMD
 
     rts
@@ -71,9 +65,9 @@ DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
 
 ; Copy data from REU memory to CPU memory
 ; usage:
-;   R0 = destination address in CPU memory (16-bit)
-;   R1:R2L = source address in REU memory (24-bit)
-;   R3 = length in bytes (16-bit)
+;   R0      = destination address in CPU memory (16-bit)
+;   R1:R2L  = source address in REU memory (24-bit)
+;   R3      = length in bytes (16-bit)
 ;   jsr reu_copy_from_reu_to_cpu
 ; Result:
 ;   Data copied from REU memory to CPU memory
@@ -81,16 +75,12 @@ DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
 ;   R0, R1, R2L, R3, A, X, Y
 .proc reu_copy_from_reu_to_cpu : near
 
-    ; Leave interrupts enabled during REU operation
-    lda #$80
-    sta REU_INTERRUPT_MASK
-
     ; Address in REU memory
     lda R1
     sta REU_FAR_ADDR_LO
     lda R1 + 1
     sta REU_FAR_ADDR_MED
-    lda R2L
+    lda R1 + 2         ; R2L
     sta REU_FAR_ADDR_HI
 
     ; Address in CPU memory
@@ -106,7 +96,7 @@ DECIMAL_BUFFER: .res 6  ; Buffer for 5-digit decimal string
     sta REU_BLOCK_LEN_HI
 
     ; Start the transfer: command $81 = REU to CPU
-    lda #$81
+    lda #%10010001
     sta REU_CMD
 
     rts

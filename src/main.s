@@ -6,6 +6,7 @@
 .include "print.inc"
 .include "file.inc"
 .include "reu.inc"
+.include "malloc.inc"
 .include "basicstub.inc"    ; ONLY include this in main.s.  MUST be last include
 
 .segment "MAIN"
@@ -16,7 +17,9 @@
 ; Variables that do not require initialization
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .segment "BSS"
-
+p_malloc_1:    .res 3     ; Pointer to first allocated block
+p_malloc_2:    .res 3     ; Pointer to second allocated block
+p_malloc_3:    .res 3     ; Pointer to third allocated block
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables that DO require initialization
@@ -48,17 +51,24 @@
     
     ; Clear the screen
     scnclr    
+
+    ; Initilialize the malloc system
+    jsr malloc_init
+
+    ; Allocate 128 bytes in REU and store pointer in p_malloc_1
+    sta_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_1, R0    
+
+    ; Allocate 128 bytes in REU and store pointer in p_malloc_2
+    sta_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_2, R0    
     
-main_loop:        
-
-    ; Check keys and act upon them
-    getkey        
-    goto_if_char 'Q', exit_program  
-
-main_end:      
-
-    ; Loop if they didn't quit
-    jmp main_loop
+    ; Allocate 128 bytes in REU and store pointer in p_malloc_3
+    sta_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_3, R0    
 
 exit_program:        
     rts

@@ -32,7 +32,8 @@ MAIN_SOURCES = 	src/main.s \
 				src/print.s \
 				src/math.s \
 				src/file.s \
-				src/reu.s
+				src/reu.s \
+				src/malloc.s
 
 # Define output binaries
 MAIN_BIN = $(BUILD_DIR)/$(MAIN_ROOT).prg
@@ -48,16 +49,30 @@ MAIN_CFG = $(CFG_DIR)/$(MAIN_ROOT).cfg
 # Default target
 all: $(MAIN_BIN)
 
+checkbreakpoint:
+	@curl -X GET -H X-Password:$(C64U_Password) http://$(C64U_ADDRESS)/v1/machine:debugreg
+
+resume:
+	@curl -X PUT -H X-Password:$(C64U_Password) http://$(C64U_ADDRESS)/v1/machine:debugreg?value=ff
+
 # You can set watches here.  It will look in your .sym file for the address of the label you provide and use the C64U API to read memory 
 # at that location.
 debug:
 	@rm -f $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .voice1 9 >> $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .voice2 9 >> $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .voice3 9 >> $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .general 6 >> $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .row 1 >> $(BUILD_DIR)/debug_output.txt
-	#@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .column 1 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .p_malloc_1 3 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .p_malloc_2 3 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .p_malloc_3 3 >> $(BUILD_DIR)/debug_output.txt	
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .p_current 3 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .p_new 3 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .l_size 2 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .block_buffer_1 8 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) .block_buffer_2 8 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) fb 2 PTR1 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) fd 2 PTR2 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) 02 2 R0 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) 04 2 R1 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) 06 2 R2 >> $(BUILD_DIR)/debug_output.txt
+	@scripts/debug2.sh $(BUILD_DIR) $(MAIN_ROOT) $(C64U_ADDRESS) $(C64U_Password) 08 2 R3 >> $(BUILD_DIR)/debug_output.txt
 
 test: all
 	@echo "Running $(MAIN_BIN) on C64U ..."
