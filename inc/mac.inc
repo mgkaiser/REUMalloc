@@ -225,7 +225,7 @@ DEBUG_REG = $d7ff
     sta dest + 2
 .endmacro
     
-.macro sta_imm_16 value, addr
+.macro mov_imm_16 addr, value
     lda #<value
     sta addr
     lda #>value

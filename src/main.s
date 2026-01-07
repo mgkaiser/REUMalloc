@@ -56,17 +56,17 @@ p_malloc_3:    .res 3     ; Pointer to third allocated block
     jsr malloc_init
 
     ; Allocate 128 bytes in REU and store pointer in p_malloc_1
-    sta_imm_16 R0, $0080
+    mov_imm_16 R0, $0080
     jsr malloc
     mov_abs_24 p_malloc_1, R0    
 
     ; Allocate 128 bytes in REU and store pointer in p_malloc_2
-    sta_imm_16 R0, $0080
+    mov_imm_16 R0, $0080
     jsr malloc
     mov_abs_24 p_malloc_2, R0    
     
     ; Allocate 128 bytes in REU and store pointer in p_malloc_3
-    sta_imm_16 R0, $0080
+    mov_imm_16 R0, $0080
     jsr malloc
     mov_abs_24 p_malloc_3, R0    
 

@@ -111,7 +111,7 @@ p_new:           .res 3                         ; Pointer to new block during ma
     lda R0
     sta l_size
     lda R0 + 1   
-    sta l_size + 1    
+    sta l_size + 1   
 
     ; Set p_current = MALLOC_HEAD
     lda #<MALLOC_HEAD
@@ -124,7 +124,7 @@ p_new:           .res 3                         ; Pointer to new block during ma
 check_block_loop:
 
     ; Get the first block pointer    
-    get_reu_block_abs PTR1, p_current       
+    get_reu_block_abs PTR1, p_current           
     
     ; Check if block is free
     ldy #reu_block::is_free
@@ -136,10 +136,12 @@ check_block_loop:
     lda (PTR1),y
     cmp l_size + 1
     bccl check_next_block   ; If block size < l_size, check next block
+    bne :+
     dey
     lda (PTR1),y
     cmp l_size
-    bccl check_next_block   ; If block size < l_size, check next block
+    bccl check_next_block   ; If block size < l_size, check next block    
+:
     
     ; Found a suitable block  
     ; Is the block size > l_size + .sizeof(reu_block) ?
@@ -147,13 +149,13 @@ check_block_loop:
     lda (PTR1),y    
     cmp l_size + 1
     bccl malloc_done      ; If not, allocate entire block
+    bne :+
     dey
     lda (PTR1),y    
     cmp l_size
     bccl malloc_done      ; If not, allocate entire block    
-
-    breakpoint
-
+:    
+    
     ; Split the block
     ;p_new = p_current + .sizeof(reu_block) + l_size
     clc
@@ -200,7 +202,7 @@ check_block_loop:
     sta (PTR2),y
     iny
     lda (PTR1),y
-    sta (PTR2),y
+    sta (PTR2),y    
 
     ; Store p_new back to REU
     put_reu_block_abs PTR2, p_new
@@ -262,7 +264,7 @@ malloc_done:
     sta (PTR1),y
 
     ; Store p_current back to REU
-    put_reu_block_abs PTR1, p_current
+    put_reu_block_abs PTR1, p_current    
     
     ; R0 = p_current + .sizeof(reu_block)
     clc
@@ -274,7 +276,7 @@ malloc_done:
     sta R0 + 1
     lda p_current + 2
     adc #^.sizeof(reu_block)    
-    sta R0 + 2
+    sta R0 + 2    
     
     rts
 

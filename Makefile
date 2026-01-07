@@ -49,6 +49,10 @@ MAIN_CFG = $(CFG_DIR)/$(MAIN_ROOT).cfg
 # Default target
 all: $(MAIN_BIN)
 
+install: all
+	@echo "Uploading $(MAIN_BIN) to C64U ..."	
+	curl -u "user:$(C64U_Password)" --ftp-create-dirs -T "$(MAIN_BIN)" "ftp://$(C64U_ADDRESS)/USB2/HDD/$(MAIN_ROOT).prg"
+
 checkbreakpoint:
 	@curl -X GET -H X-Password:$(C64U_Password) http://$(C64U_ADDRESS)/v1/machine:debugreg
 
