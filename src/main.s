@@ -50,26 +50,84 @@ p_malloc_3:    .res 3     ; Pointer to third allocated block
     jsr KERNAL_CHROUT
     
     ; Clear the screen
-    scnclr    
+    scnclr        
 
     ; Initilialize the malloc system
-    jsr malloc_init
+    jsr malloc_init     
 
     ; Allocate 128 bytes in REU and store pointer in p_malloc_1
-    mov_imm_16 R0, $0080
-    jsr malloc
-    mov_abs_24 p_malloc_1, R0    
+    mov_imm_16 R0, $0080    
+    jsr malloc    
+    mov_abs_24 p_malloc_1, R0                    
 
     ; Allocate 128 bytes in REU and store pointer in p_malloc_2
     mov_imm_16 R0, $0080
     jsr malloc
-    mov_abs_24 p_malloc_2, R0    
+    mov_abs_24 p_malloc_2, R0                
     
     ; Allocate 128 bytes in REU and store pointer in p_malloc_3
     mov_imm_16 R0, $0080
     jsr malloc
-    mov_abs_24 p_malloc_3, R0    
+    mov_abs_24 p_malloc_3, R0     
 
+    jsr walk_blocks       
+
+    ; Free the first allocated block
+    mov_abs_24 R0, p_malloc_1
+    jsr free    
+
+    jsr walk_blocks       
+    
+    ; Reallocate 128 bytes in REU and store pointer in p_malloc_1
+    mov_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_1, R0        
+    
+    jsr walk_blocks       
+
+    ; Free the second allocated block
+    mov_abs_24 R0, p_malloc_2
+    jsr free    
+    
+    ; Reallocate 128  bytes in REU and store pointer in p_malloc_2  
+    mov_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_2, R0        
+
+    ; Free the third allocated block
+    mov_abs_24 R0, p_malloc_3
+    jsr free    
+    
+    ; Reallocate 128 bytes in REU and store pointer in p_malloc_3
+    mov_imm_16 R0, $0080
+    jsr malloc
+    mov_abs_24 p_malloc_3, R0        
+
+    ; Free first block
+    mov_abs_24 R0, p_malloc_1
+    jsr free    
+    
+    ; Reallocate 200 bytes in REU and store pointer in p_malloc_1
+    mov_imm_16 R0, $00C8    
+    jsr malloc
+    mov_abs_24 p_malloc_1, R0   
+
+    ; Free first and second blocks
+    mov_abs_24 R0, p_malloc_1
+    jsr free
+    
+    mov_abs_24 R0, p_malloc_2
+    jsr free    
+
+    ; Garbage collect free blocks    
+    jsr garbage_collect        
+
+    ; Reallocate 200 bytes in REU and store pointer in p_malloc_1
+    mov_imm_16 R0, $00C8
+    jsr malloc
+    mov_abs_24 p_malloc_1, R0    
+
+    
 exit_program:        
     rts
 

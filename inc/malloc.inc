@@ -3,6 +3,7 @@
     .import malloc: near
     .import free: near    
     .import garbage_collect: near
+    .import walk_blocks: near
 .endif
 
 MALLOC_HEAD = $000001   ; REU memory start address for malloc management

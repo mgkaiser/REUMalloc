@@ -2,7 +2,6 @@
 .define current_file "malloc.s"
 
 .include "mac.inc"
-.include "print.inc"
 .include "reu.inc"
 .include "malloc.inc"
 
@@ -11,6 +10,7 @@
 .export malloc  
 .export free
 .export garbage_collect
+.export walk_blocks
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Variables that do not require initialization
@@ -96,156 +96,145 @@ p_new:           .res 3                         ; Pointer to new block during ma
 .proc malloc : near
 
     ; PTR1 = &block_buffer_1
-    lda #<block_buffer_1
-    sta PTR1
-    lda #>block_buffer_1
-    sta PTR1+1
+    mov_imm_16 PTR1, block_buffer_1    
     
     ; PTR2 = &block_buffer_2
-    lda #<block_buffer_2
-    sta PTR2
-    lda #>block_buffer_2
-    sta PTR2+1
-
+    mov_imm_16 PTR2, block_buffer_2
+    
     ; l_size = R0 (requested size)
-    lda R0
-    sta l_size
-    lda R0 + 1   
-    sta l_size + 1   
+    mov_abs_16 l_size, R0    
 
     ; Set p_current = MALLOC_HEAD
-    lda #<MALLOC_HEAD
-    sta p_current
-    lda #>MALLOC_HEAD
-    sta p_current + 1
-    lda #^MALLOC_HEAD
-    sta p_current + 2    
+    mov_imm_24 p_current, MALLOC_HEAD        
     
 check_block_loop:
 
-    ; Get the first block pointer    
-    get_reu_block_abs PTR1, p_current           
-    
-    ; Check if block is free
-    ldy #reu_block::is_free
-    lda (PTR1),y
-    beql check_next_block   ; If not free, check next block
-
-    ; Check if block size >= l_size (16-bit compare)
-    ldy #reu_block::size + 1
-    lda (PTR1),y
-    cmp l_size + 1
-    bccl check_next_block   ; If block size < l_size, check next block
-    bne :+
-    dey
-    lda (PTR1),y
-    cmp l_size
-    bccl check_next_block   ; If block size < l_size, check next block    
-:
-    
-    ; Found a suitable block  
-    ; Is the block size > l_size + .sizeof(reu_block) ?
-    ldy #reu_block::size + 1
-    lda (PTR1),y    
-    cmp l_size + 1
-    bccl malloc_done      ; If not, allocate entire block
-    bne :+
-    dey
-    lda (PTR1),y    
-    cmp l_size
-    bccl malloc_done      ; If not, allocate entire block    
-:    
-    
-    ; Split the block
-    ;p_new = p_current + .sizeof(reu_block) + l_size
-    clc
-    lda p_current
-    adc #<(.sizeof(reu_block))
-    adc l_size
-    sta p_new
-    lda p_current + 1
-    adc #>.sizeof(reu_block)
-    adc l_size + 1
-    sta p_new + 1
-    lda p_current + 2
-    adc #^.sizeof(reu_block)
-    sta p_new + 2
-    
-    ; Set p_new->size = original_size - l_size - .sizeof(reu_block)
-    sec
-    ldy #reu_block::size    
-    lda (PTR1),y        
-    sbc l_size    
-    sbc #<(.sizeof(reu_block))
-    sta (PTR2),y    
-    iny    
-    lda (PTR1),y    
-    sbc l_size + 1
-    sbc #>.sizeof(reu_block)
-    sta (PTR2),y    
-    iny
-    lda (PTR1),y    
-    sbc #^.sizeof(reu_block)
-    sta (PTR2),y
-
-    ; p_new->is_free = 1
-    ldy #reu_block::is_free
-    lda #$01
-    sta (PTR2),y
-
-    ; p_new->next = p_current->next
-    ldy #reu_block::next
-    lda (PTR1),y
-    sta (PTR2),y
-    iny
-    lda (PTR1),y
-    sta (PTR2),y
-    iny
-    lda (PTR1),y
-    sta (PTR2),y    
-
-    ; Store p_new back to REU
-    put_reu_block_abs PTR2, p_new
-
-    ; Update p_current->size = l_size
-    ldy #reu_block::size
-    lda l_size
-    sta (PTR1),y
-    iny
-    lda l_size + 1
-    sta (PTR1),y
-    
-    ; p_current->next = p_new
-    ldy #reu_block::next
-    lda p_new
-    sta (PTR1),y
-    iny
-    lda p_new + 1
-    sta (PTR1),y
-    iny
-    lda p_new + 2
-    sta (PTR1),y
+        ; Get the first block pointer    
+        get_reu_block_abs PTR1, p_current           
         
-    jmp malloc_done
+        ; Check if block is free
+        ldy #reu_block::is_free
+        lda (PTR1),y
+        beql check_next_block   ; If not free, check next block
 
-check_next_block:
+        ; Check if block size >= l_size (16-bit compare)
+        ldy #reu_block::size + 1
+        lda (PTR1),y
+        cmp l_size + 1
+        bccl check_next_block   ; If block size < l_size, check next block
+        bne :+
+        dey
+        lda (PTR1),y
+        cmp l_size
+        bccl check_next_block   ; If block size < l_size, check next block    
+    :
+        
+        ; Found a suitable block  
+        ; Is the block size > l_size + .sizeof(reu_block) ?
+        ldy #reu_block::size + 1
+        lda (PTR1),y    
+        cmp l_size + 1
+        bccl malloc_done      ; If not, allocate entire block
+        bne :+
+        dey
+        lda (PTR1),y    
+        cmp l_size
+        bccl malloc_done      ; If not, allocate entire block    
+    :    
+        
+            ; Split the block
+            ;p_new = p_current + .sizeof(reu_block) + l_size
+            clc
+            lda p_current
+            adc #<(.sizeof(reu_block))
+            adc l_size
+            sta p_new
+            lda p_current + 1
+            adc #>.sizeof(reu_block)
+            adc l_size + 1
+            sta p_new + 1
+            lda p_current + 2
+            adc #^.sizeof(reu_block)
+            sta p_new + 2
+            
+            ; Set p_new->size = original_size - l_size - .sizeof(reu_block)
+            sec
+            ldy #reu_block::size    
+            lda (PTR1),y        
+            sbc l_size    
+            sbc #<(.sizeof(reu_block))
+            sta (PTR2),y    
+            iny    
+            lda (PTR1),y    
+            sbc l_size + 1
+            sbc #>.sizeof(reu_block)
+            sta (PTR2),y    
+            iny
+            lda (PTR1),y    
+            sbc #^.sizeof(reu_block)
+            sta (PTR2),y
 
-    ; p_current = PTR1->next
-    ldy #reu_block::next
-    lda (PTR1),y
-    sta p_current
-    iny
-    lda (PTR1),y
-    sta p_current + 1
-    iny
-    lda (PTR1),y
-    sta p_current + 2
+            ; p_new->is_free = 1
+            ldy #reu_block::is_free
+            lda #$01
+            sta (PTR2),y
 
-    ; Check if p_current == 0
-    lda p_current
-    ora p_current + 1
-    ora p_current + 2
-    beq malloc_done       ; If zero, no more blocks to check
+            ; p_new->next = p_current->next
+            ldy #reu_block::next
+            lda (PTR1),y
+            sta (PTR2),y
+            iny
+            lda (PTR1),y
+            sta (PTR2),y
+            iny
+            lda (PTR1),y
+            sta (PTR2),y    
+
+            ; Store p_new back to REU
+            put_reu_block_abs PTR2, p_new
+
+            ; Update p_current->size = l_size
+            ldy #reu_block::size
+            lda l_size
+            sta (PTR1),y
+            iny
+            lda l_size + 1
+            sta (PTR1),y
+            iny
+            lda #$00
+            sta (PTR1),y
+            
+            ; p_current->next = p_new
+            ldy #reu_block::next
+            lda p_new
+            sta (PTR1),y
+            iny
+            lda p_new + 1
+            sta (PTR1),y
+            iny
+            lda p_new + 2
+            sta (PTR1),y
+            
+        jmp malloc_done
+
+    check_next_block:
+
+        ; p_current = PTR1->next
+        ldy #reu_block::next
+        lda (PTR1),y
+        sta p_current
+        iny
+        lda (PTR1),y
+        sta p_current + 1
+        iny
+        lda (PTR1),y
+        sta p_current + 2
+
+        ; Check if p_current == 0
+        lda p_current
+        ora p_current + 1
+        ora p_current + 2
+        beq malloc_done       ; If zero, no more blocks to check
 
     ; Loop back to check the next block
     jmp check_block_loop
@@ -285,7 +274,7 @@ malloc_return_null:
     lda #$00
     sta R0
     sta R0 + 1
-    sta R1L
+    sta R0 + 2
 
     rts
     
@@ -316,12 +305,12 @@ malloc_return_null:
     lda R0 + 1
     sbc #>.sizeof(reu_block)
     sta p_current + 1
-    lda R1L
+    lda R0 + 2
     sbc #^.sizeof(reu_block)
-    sta p_current + 2
+    sta p_current + 2    
 
     ; Get the block from REU
-    get_reu_block_abs PTR1, p_current
+    get_reu_block_abs PTR1, p_current    
 
     ; Set is_free = 1
     ldy #reu_block::is_free
@@ -345,101 +334,92 @@ malloc_return_null:
 ;   All registers, PTR1, PTR2
 .proc garbage_collect : near
     ; PTR1 = &block_buffer_1
-    lda #<block_buffer_1
-    sta PTR1
-    lda #>block_buffer_1
-    sta PTR1+1
+    mov_imm_16 PTR1, block_buffer_1    
     
     ; PTR2 = &block_buffer_2
-    lda #<block_buffer_2
-    sta PTR2
-    lda #>block_buffer_2
-    sta PTR2+1
+    mov_imm_16 PTR2, block_buffer_2    
 
     ; p_current = MALLOC_HEAD
-    lda #<MALLOC_HEAD
-    sta p_current
-    lda #>MALLOC_HEAD
-    sta p_current+1
-    lda #^MALLOC_HEAD
-    sta p_current+2
+    mov_imm_24 p_current, MALLOC_HEAD    
 
 garbage_collect_outer_loop:
 
-    ; Get current block
-    get_reu_block_abs PTR1, p_current
-    
-    ; Get next block
-    ldy #reu_block::next
-    lda (PTR1),y
-    sta p_new
-    iny
-    lda (PTR1),y
-    sta p_new + 1
-    iny
-    lda (PTR1),y
-    sta p_new + 2
+        ; Get current block
+        get_reu_block_abs PTR1, p_current
+        
+        ; Get next block
+        ldy #reu_block::next
+        lda (PTR1),y
+        sta p_new
+        iny
+        lda (PTR1),y
+        sta p_new + 1
+        iny
+        lda (PTR1),y
+        sta p_new + 2
 
-    ; If next block is NULL, done
-    lda p_new
-    ora p_new + 1
-    ora p_new + 2
-    beql garbage_collect_done
+        ; If next block is NULL, done
+        lda p_new
+        ora p_new + 1
+        ora p_new + 2
+        beql garbage_collect_done
 
-    ; Get next block into PTR2
-    get_reu_block_abs PTR2, p_new
-    
-    ; Check if both current and next blocks are free
-    ldy #reu_block::is_free
-    lda (PTR1),y
-    beql garbage_collect_next   ; Current block not free
-    lda (PTR2),y
-    beql garbage_collect_next   ; Next block not free
+        ; Get next block into PTR2
+        get_reu_block_abs PTR2, p_new
+        
+        ; Check if both current and next blocks are free
+        ldy #reu_block::is_free        
+        lda (PTR1),y
+        beql garbage_collect_next   ; Current block not free
+        lda (PTR2),y
+        beql garbage_collect_next   ; Next block not free
 
-    ; Coalesce blocks
-    ; PTR1->size += .sizeof(reu_block) + PTR2->size
-    clc
-    ldy #reu_block::size + 1
-    lda (PTR1),y    
-    adc #>.sizeof(reu_block)
-    adc (PTR2),y
-    sta (PTR1),y
-    iny
-    lda (PTR1),y
-    adc #<.sizeof(reu_block)
-    adc (PTR2),y
-    sta (PTR1),y
-    iny
-    lda (PTR1),y
-    adc (PTR2),y
-    sta (PTR1),y
+        breakpoint VIC_COL_LIGHT_RED
 
-    ; PTR1->next = PTR2->next
-    ldy #reu_block::next
-    lda (PTR2),y
-    sta (PTR1),y
-    iny
-    lda (PTR2),y
-    sta (PTR1),y
-    iny
-    lda (PTR2),y
-    sta (PTR1),y
+        ; Coalesce blocks
+        ; PTR1->size += .sizeof(reu_block) + PTR2->size
+        clc
+        ldy #reu_block::size
+        lda (PTR1),y    
+        adc #<.sizeof(reu_block)
+        adc (PTR2),y
+        sta (PTR1),y
+        iny
+        lda (PTR1),y
+        adc #>.sizeof(reu_block)
+        adc (PTR2),y
+        sta (PTR1),y
+        iny
+        lda (PTR1),y
+        adc #^.sizeof(reu_block)
+        adc (PTR2),y
+        sta (PTR1),y
 
-    ; Store updated PTR1 back to REU
-    put_reu_block_abs PTR1, p_current
+        ; PTR1->next = PTR2->next
+        ldy #reu_block::next
+        lda (PTR2),y
+        sta (PTR1),y
+        iny
+        lda (PTR2),y
+        sta (PTR1),y
+        iny
+        lda (PTR2),y
+        sta (PTR1),y
+
+        breakpoint VIC_COL_WHITE
+
+        ; Store updated PTR1 back to REU
+        put_reu_block_abs PTR1, p_current
 
     ; Loop back to check again from current block
     jmp garbage_collect_outer_loop
 
 garbage_collect_next:
+
+    breakpoint VIC_COL_GREEN
     
     ; Move to next block
-    lda p_new
-    sta p_current
-    lda p_new + 1
-    sta p_current + 1
-    lda p_new + 2
-    sta p_current + 2
+    mov_abs_24 p_current, p_new    
     jmp garbage_collect_outer_loop    
     
 garbage_collect_done:
@@ -447,4 +427,42 @@ garbage_collect_done:
     rts
 .endproc
 
+.proc walk_blocks : near
+
+    ; PTR1 = &block_buffer_1
+    mov_imm_16 PTR1, block_buffer_1    
+    
+    ; p_current = MALLOC_HEAD
+    mov_imm_24 p_current, MALLOC_HEAD   
+
+walk_blocks_loop:
+
+        ; Get current block
+        get_reu_block_abs PTR1, p_current
+
+        breakpoint VIC_COL_BLUE
+
+        ; Get next block
+        ldy #reu_block::next
+        lda (PTR1),y
+        sta p_current
+        iny
+        lda (PTR1),y
+        sta p_current + 1
+        iny
+        lda (PTR1),y
+        sta p_current + 2
+
+        ; If next block is NULL, done
+        lda p_current
+        ora p_current + 1
+        ora p_current + 2
+        beql walk_blocks_done       
+    ; Loop back to check the next block
+    jmp walk_blocks_loop
+walk_blocks_done:
+    
+    rts
+.endproc
+    
 .endscope

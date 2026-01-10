@@ -59,7 +59,7 @@
     ; Start the transfer: command $80 = CPU to REU
     lda #%10010000
     sta REU_CMD
-
+    
     rts
 .endproc
 
@@ -97,7 +97,7 @@
 
     ; Start the transfer: command $81 = REU to CPU
     lda #%10010001
-    sta REU_CMD
+    sta REU_CMD    
 
     rts
 .endproc

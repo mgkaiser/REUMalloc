@@ -29,8 +29,6 @@ MAIN_ROOT = reumalloc
 
 # Define sources for the main program and overlays
 MAIN_SOURCES = 	src/main.s \
-				src/print.s \
-				src/math.s \
 				src/file.s \
 				src/reu.s \
 				src/malloc.s

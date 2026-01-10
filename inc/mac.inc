@@ -200,12 +200,18 @@ VIC_COL_LIGHT_GRAY  = $0f
 
 DEBUG_REG = $d7ff
 
-.macro breakpoint
+.macro breakpoint value
     pha
+    lda VIC_BORDER_COL
+    pha
+    lda #value
+    sta VIC_BORDER_COL
     lda #$00
     sta DEBUG_REG
 :   lda DEBUG_REG
     beq :-  
+    pla
+    sta VIC_BORDER_COL
     pla
 .endmacro
 
@@ -223,6 +229,15 @@ DEBUG_REG = $d7ff
     sta dest + 1
     lda src + 2
     sta dest + 2
+.endmacro
+
+.macro mov_imm_24 addr, value
+    lda #<value
+    sta addr
+    lda #>value
+    sta addr + 1
+    lda #^value
+    sta addr + 2
 .endmacro
     
 .macro mov_imm_16 addr, value
